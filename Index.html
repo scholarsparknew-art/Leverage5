@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Daily Audit</title>
+  <style>
+    :root {
+      --bg: #0A0A0A;
+      --card-bg: #141414;
+      --border: #262626;
+      --amber: #FFBF00;
+      --amber-dim: rgba(255, 191, 0, 0.15);
+      --text-main: #F5F5F5;
+      --text-muted: #A3A3A3;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      background-color: var(--bg);
+      color: var(--text-main);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      overflow: hidden;
+      position: relative;
+    }
+
+    /* Dynamic Animated Background */
+    .bg-gradient {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: radial-gradient(circle at 50% 20%, rgba(255, 191, 0, 0.08), transparent 50%),
+                  radial-gradient(circle at 80% 80%, rgba(30, 30, 30, 0.5), transparent 60%);
+      animation: pulseGlow 8s ease-in-out infinite alternate;
+      z-index: 1;
+    }
+
+    @keyframes pulseGlow {
+      0% { opacity: 0.5; transform: scale(1); }
+      100% { opacity: 1; transform: scale(1.1); }
+    }
+
+    canvas#particles {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 2;
+      pointer-events: none;
+    }
+
+    #app {
+      width: 100%;
+      max-width: 430px;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 20px 20px 32px 20px;
+      position: relative;
+      z-index: 3;
+    }
+
+    /* Header & Controls */
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-bottom: 16px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .brand {
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--amber);
+    }
+
+    .header-right {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .audio-btn {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      color: var(--amber);
+      padding: 6px 10px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .timer {
+      font-family: monospace;
+      font-size: 16px;
+      font-weight: 700;
+      background: var(--card-bg);
+      padding: 6px 12px;
+      border-radius: 4px;
+      border: 1px solid var(--border);
+      color: var(--text-main);
+    }
+
+    .progress-container {
+      width: 100%;
+      height: 4px;
+      background: var(--border);
+      margin-top: 16px;
+      border-radius: 2px;
+      overflow: hidden;
+    }
+
+    .progress-bar {
+      height: 100%;
+      width: 20%;
+      background: var(--amber);
+      transition: width 0.3s ease;
+    }
+
+    .quiz-container {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      position: relative;
+      margin: 20px 0;
+    }
+
+    .card {
+      background: rgba(20, 20, 20, 0.85);
+      backdrop-filter: blur(8px);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 24px;
+      transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .card.slide-out {
+      transform: translateX(-100%);
+      opacity: 0;
+    }
+
+    .card.slide-in {
+      animation: slideIn 0.25s forwards;
+    }
+
+    @keyframes slideIn {
+      from { transform: translateX(100%); opacity: 0; }
+      to { transform: translateX(0); opacity: 1; }
+    }
+
+    .question-tag {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--text-muted);
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      margin-bottom: 12px;
+    }
+
+    .question-text {
+      font-size: 18px;
+      font-weight: 600;
+      line-height: 1.4;
+      margin-bottom: 28px;
+    }
+
+    .options-group {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .option-btn {
+      background: #1A1A1A;
+      border: 1px solid var(--border);
+      color: var(--text-main);
+      padding: 16px;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 500;
+      text-align: left;
+      cursor: pointer;
+      transition: background 0.15s ease, border-color 0.15s ease;
+      line-height: 1.4;
+    }
+
+    .option-btn:active {
+      background: var(--amber-dim);
+      border-color: var(--amber);
+    }
+
+    .results-container {
+      display: none;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .score-banner {
+      background: rgba(20, 20, 20, 0.85);
+      border: 1px solid var(--amber);
+      border-radius: 8px;
+      padding: 28px 20px;
+      text-align: center;
+    }
+
+    .metric-value {
+      font-size: 56px;
+      font-weight: 800;
+      color: var(--amber);
+      line-height: 1;
+      margin: 12px 0;
+    }
+
+    .metric-label {
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 1.5px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+    }
+
+    .status-badge {
+      display: inline-block;
+      padding: 4px 12px;
+      background: var(--amber-dim);
+      color: var(--amber);
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-top: 8px;
+    }
+
+    .metric-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .grid-card {
+      background: rgba(20, 20, 20, 0.85);
+      border: 1px solid var(--border);
+      padding: 16px;
+      border-radius: 6px;
+      text-align: center;
+    }
+
+    .grid-card-val {
+      font-size: 20px;
+      font-weight: 700;
+      margin-top: 4px;
+    }
+
+    .repeat-btn {
+      background: var(--amber);
+      color: #000;
+      border: none;
+      padding: 16px;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 800;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      cursor: pointer;
+      margin-top: 8px;
+      width: 100%;
+    }
+
+    .repeat-btn:disabled {
+      background: var(--border);
+      color: var(--text-muted);
+      cursor: not-allowed;
+    }
+
+    .attempt-text {
+      text-align: center;
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+  </style>
+</head>
+<body>
+
+  <div class="bg-gradient"></div>
+  <canvas id="particles"></canvas>
+
+  <div id="app">
+    <header>
+      <div class="brand">EXECUTION AUDIT</div>
+      <div class="header-right">
+        <button class="audio-btn" id="audio-toggle" onclick="toggleAudio()">SOUND: OFF</button>
+        <div class="timer" id="timer">10:00</div>
+      </div>
+    </header>
+
+    <div class="progress-container" id="progress-wrapper">
+      <div class="progress-bar" id="progress"></div>
+    </div>
+
+    <div class="quiz-container" id="quiz-box">
+      <div class="card" id="card">
+        <div class="question-tag" id="q-number">QUESTION 1 / 5</div>
+        <div class="question-text" id="q-text">Loading daily metrics...</div>
+        <div class="options-group" id="options"></div>
+      </div>
+    </div>
+
+    <div class="results-container" id="results-box">
+      <div class="score-banner">
+        <div class="metric-label">Daily Leverage Score</div>
+        <div class="metric-value" id="final-score">0%</div>
+        <div class="status-badge" id="status-title">EVALUATING</div>
+      </div>
+
+      <div class="metric-grid">
+        <div class="grid-card">
+          <div class="metric-label">Time Elapsed</div>
+          <div class="grid-card-val" id="time-taken">0s</div>
+        </div>
+        <div class="grid-card">
+          <div class="metric-label">Execution Index</div>
+          <div class="grid-card-val" id="execution-index">0/100</div>
+        </div>
+      </div>
+
+      <button class="repeat-btn" id="repeat-btn" onclick="restartQuiz()">REPEAT TEST</button>
+      <div class="attempt-text" id="attempt-count">ATTEMPTS REMAINING: 5/5</div>
+    </div>
+  </div>
+
+  <script>
+    const QUESTION_BANK = [
+      { q: "A non-critical request arrives that breaks your planned deep-work block. Response?", options: [{ txt: "Refuse immediately with zero explanation", pts: 20 }, { txt: "Delay reply until task block completes", pts: 15 }, { txt: "Accept and adjust your operational timeline", pts: 0 }] },
+      { q: "You face high public friction or potential social pushback on a firm decision. You:", options: [{ txt: "Execute without consultation or approval", pts: 20 }, { txt: "Soft-launch to gauge group reaction first", pts: 10 }, { txt: "Postpone to minimize conflict", pts: 0 }] },
+      { q: "An acquaintance demands an immediate commitment you prefer not to make. Strategy?", options: [{ txt: "Deliver a clean, direct 'No' with no justification", pts: 20 }, { txt: "Offer a conditional, high-leverage alternative", pts: 10 }, { txt: "Provide a diplomatic excuse to appease", pts: 0 }] },
+      { q: "You identify a major strategic error caused by a peer. Next action?", options: [{ txt: "State the correction cold and demand immediate alignment", pts: 20 }, { txt: "Address it privately with diplomatic framing", pts: 10 }, { txt: "Absorb the error to preserve group harmony", pts: 0 }] },
+      { q: "Faced with a high-stakes choice with only 60% of information available. You:", options: [{ txt: "Pull the trigger instantly and manage feedback loops", pts: 20 }, { txt: "Wait 24 hours to collect additional context", pts: 5 }, { txt: "Defer decision to avoid downside risk", pts: 0 }] },
+      { q: "Someone attempts to talk over your summary in a strategic meeting. Response?", options: [{ txt: "Continue speaking at full volume until finished", pts: 20 }, { txt: "Pause, hold eye contact, then reclaim the floor", pts: 15 }, { txt: "Yield the floor and speak later", pts: 0 }] },
+      { q: "A critical task requires cold outreach to an influential figure. Approach?", options: [{ txt: "Send a direct, high-value 2-line proposal instantly", pts: 20 }, { txt: "Draft and over-refine the message for hours", pts: 5 }, { txt: "Abandon due to low perceived probability", pts: 0 }] },
+      { q: "An unproductive meeting extends past its allotted timeframe. Action?", options: [{ txt: "Disconnect/leave immediately at the scheduled time", pts: 20 }, { txt: "Signal urgency in chat and exit 5 minutes late", pts: 10 }, { txt: "Stay quietly until the host concludes", pts: 0 }] }
+    ];
+
+    // State Variables
+    let attemptsUsed = 0;
+    const maxAttempts = 5;
+    let questions = [];
+    let currentIndex = 0;
+    let totalScore = 0;
+    let timeRemaining = 600;
+    let timerInterval = null;
+
+    // Web Audio Dark Sound Generator
+    let audioCtx = null;
+    let soundEnabled = false;
+    let droneOsc = null;
+
+    function initAudio() {
+      if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      }
+    }
+
+    function toggleAudio() {
+      initAudio();
+      soundEnabled = !soundEnabled;
+      const btn = document.getElementById('audio-toggle');
+      if (soundEnabled) {
+        btn.textContent = "SOUND: ON";
+        playDarkDrone();
+      } else {
+        btn.textContent = "SOUND: OFF";
+        if (droneOsc) droneOsc.stop();
+      }
+    }
+
+    function playDarkDrone() {
+      if (!soundEnabled || !audioCtx) return;
+      droneOsc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      droneOsc.type = 'sawtooth';
+      droneOsc.frequency.setValueAtTime(55, audioCtx.currentTime); // Low A note
+      gain.gain.setValueAtTime(0.02, audioCtx.currentTime);
+      droneOsc.connect(gain);
+      gain.connect(audioCtx.destination);
+      droneOsc.start();
+    }
+
+    function playClickSound() {
+      if (!soundEnabled || !audioCtx) return;
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(120, audioCtx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(30, audioCtx.currentTime + 0.15);
+      gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.15);
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.start();
+      osc.stop(audioCtx.currentTime + 0.15);
+    }
+
+    // Elements
+    const timerEl = document.getElementById('timer');
+    const qNumberEl = document.getElementById('q-number');
+    const qTextEl = document.getElementById('q-text');
+    const optionsEl = document.getElementById('options');
+    const progressBar = document.getElementById('progress');
+    const card = document.getElementById('card');
+    const quizBox = document.getElementById('quiz-box');
+    const resultsBox = document.getElementById('results-box');
+    const progressWrapper = document.getElementById('progress-wrapper');
+
+    function getRandomQuestions() {
+      let shuffled = [...QUESTION_BANK].sort(() => 0.5 - Math.random());
+      return shuffled.slice(0, 5);
+    }
+
+    function startQuizSession() {
+      currentIndex = 0;
+      totalScore = 0;
+      timeRemaining = 600;
+      questions = getRandomQuestions();
+      
+      quizBox.style.display = 'flex';
+      progressWrapper.style.display = 'block';
+      timerEl.style.display = 'block';
+      resultsBox.style.display = 'none';
+
+      startTimer();
+      renderQuestion();
+    }
+
+    function startTimer() {
+      clearInterval(timerInterval);
+      timerInterval = setInterval(() => {
+        timeRemaining--;
+        let m = Math.floor(timeRemaining / 60);
+        let s = timeRemaining % 60;
+        timerEl.textContent = `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+        
+        if (timeRemaining <= 0) {
+          clearInterval(timerInterval);
+          finishQuiz();
+        }
+      }, 1000);
+    }
+
+    function renderQuestion() {
+      const q = questions[currentIndex];
+      qNumberEl.textContent = `QUESTION ${currentIndex + 1} / 5`;
+      qTextEl.textContent = q.q;
+      optionsEl.innerHTML = '';
+      progressBar.style.width = `${((currentIndex + 1) / 5) * 100}%`;
+
+      q.options.forEach(opt => {
+        const btn = document.createElement('button');
+        btn.className = 'option-btn';
+        btn.innerHTML = `<span>${opt.txt}</span>`;
+        btn.onclick = () => selectOption(opt.pts);
+        optionsEl.appendChild(btn);
+      });
+    }
+
+    function selectOption(pts) {
+      playClickSound();
+      totalScore += pts;
+      card.classList.add('slide-out');
+
+      setTimeout(() => {
+        currentIndex++;
+        if (currentIndex < 5) {
+          renderQuestion();
+          card.classList.remove('slide-out');
+          card.classList.add('slide-in');
+          setTimeout(() => card.classList.remove('slide-in'), 250);
+        } else {
+          finishQuiz();
+        }
+      }, 200);
+    }
+
+    function finishQuiz() {
+      clearInterval(timerInterval);
+      attemptsUsed++;
+      const timeElapsed = 600 - timeRemaining;
+
+      quizBox.style.display = 'none';
+      progressWrapper.style.display = 'none';
+      timerEl.style.display = 'none';
+      resultsBox.style.display = 'flex';
+
+      document.getElementById('final-score').textContent = `${totalScore}%`;
+      document.getElementById('execution-index').textContent = `${totalScore}/100`;
+      
+      let mins = Math.floor(timeElapsed / 60);
+      let secs = timeElapsed % 60;
+      document.getElementById('time-taken').textContent = `${mins}m ${secs}s`;
+
+      const badge = document.getElementById('status-title');
+      if (totalScore >= 80) badge.textContent = "SOVEREIGN EXECUTION";
+      else if (totalScore >= 50) badge.textContent = "MODERATE HESITATION";
+      else badge.textContent = "HIGH APPROVAL SEEKING";
+
+      const repeatBtn = document.getElementById('repeat-btn');
+      const attemptText = document.getElementById('attempt-count');
+      
+      let remaining = maxAttempts - attemptsUsed;
+      attemptText.textContent = `ATTEMPTS REMAINING: ${remaining}/${maxAttempts}`;
+
+      if (remaining <= 0) {
+        repeatBtn.disabled = true;
+        repeatBtn.textContent = "LIMIT REACHED TODAY";
+      }
+    }
+
+    function restartQuiz() {
+      if (attemptsUsed < maxAttempts) {
+        startQuizSession();
+      }
+    }
+
+    // Particle Canvas Animation
+    const canvas = document.getElementById('particles');
+    const ctx = canvas.getContext('2d');
+    let particlesArray = [];
+
+    function resizeCanvas() {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    }
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
+
+    class Particle {
+      constructor() {
+        this.x = Math.random() * canvas.width;
+        this.y = Math.random() * canvas.height;
+        this.size = Math.random() * 2 + 0.5;
+        this.speedY = -(Math.random() * 0.4 + 0.1);
+        this.opacity = Math.random() * 0.5 + 0.1;
+      }
+      update() {
+        this.y += this.speedY;
+        if (this.y < 0) {
+          this.y = canvas.height;
+          this.x = Math.random() * canvas.width;
+        }
+      }
+      draw() {
+        ctx.fillStyle = `rgba(255, 191, 0, ${this.opacity})`;
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+
+    function initParticles() {
+      particlesArray = [];
+      for (let i = 0; i < 35; i++) {
+        particlesArray.push(new Particle());
+      }
+    }
+
+    function animateParticles() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      particlesArray.forEach(p => {
+        p.update();
+        p.draw();
+      });
+      requestAnimationFrame(animateParticles);
+    }
+
+    initParticles();
+    animateParticles();
+    startQuizSession();
+  </script>
+</body>
+</html>
+
